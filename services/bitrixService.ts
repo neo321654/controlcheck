@@ -34,7 +34,11 @@ export const submitToBitrix = async (formData: FormData, product: Product, statu
         TITLE: itemTitle,
         'ufCrm_5_1758478747373': formData.batchNumber,
         'ufCrm_5_1758478928479': status,
-        'ufCrm_5_1758478964965': averageScore
+        'ufCrm_5_1758478964965': averageScore,
+        'ufCrm_5_1758486042': [
+          ['exterior.png', exteriorPhotoB64],
+          ['crumb.png', crumbPhotoB64]
+        ]
       }
     };
     const createResponse = await fetch(`${BITRIX_WEBHOOK_URL}crm.item.add`, {
@@ -88,10 +92,7 @@ export const submitToBitrix = async (formData: FormData, product: Product, statu
         fields: {
             ENTITY_ID: itemId,
             ENTITY_TYPE: `TDA_${ENTITY_TYPE_ID}`,
-            COMMENT: timelineComment,
-            FILES: filesToAttach.map(f => ({
-                fileData: [f.filename, f.data]
-            }))
+            COMMENT: timelineComment
         }
     };
 
