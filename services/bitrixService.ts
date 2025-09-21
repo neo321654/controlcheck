@@ -17,47 +17,42 @@ const fileToBase64 = (file: File): Promise<string> => {
 
 export const submitToBitrix = async (formData: FormData, product: Product, status: Status, averageScore: number): Promise<void> => {
   const BITRIX_WEBHOOK_URL = "https://b24-4z2z5p.bitrix24.ru/rest/1/j883ryxtcid6nann/";
+  const ENTITY_TYPE_ID = 1038; // ID смарт-процесса "Проверки качества"
 
-  console.log("Starting submission to Bitrix24...");
+  console.log("Submitting to Bitrix24 Smart Process (known to result in empty fields)...");
 
   try {
     // 1. Convert photos to base64
     const exteriorPhotoB64 = formData.exteriorPhoto ? await fileToBase64(formData.exteriorPhoto) : null;
     const crumbPhotoB64 = formData.crumbPhoto ? await fileToBase64(formData.crumbPhoto) : null;
 
-    // 2. Create the Deal
-    const dealTitle = `Проверка качества: ${product.name} - Партия №${formData.batchNumber}`;
-    const dealPayload = {
+    // 2. Create new item - this is the version that results in empty custom fields
+    const itemTitle = `Проверка качества: ${product.name} - Партия №${formData.batchNumber}`;
+    const createPayload = {
+      entityTypeId: ENTITY_TYPE_ID,
       fields: {
-        TITLE: dealTitle,
-        // These are custom fields. They must exist in your Bitrix24 CRM.
-        UF_CRM_1758475669: formData.batchNumber, // Номер партии
-        UF_CRM_1758475694: status,              // Статус проверки
-        UF_CRM_1758475725: averageScore.toFixed(2), // Средний балл
-        COMMENTS: `Первичные заметки: ${formData.notes || 'Нет'}`
+        TITLE: itemTitle,
+        'ufCrm_5_1758478747373': formData.batchNumber,
+        'ufCrm_5_1758478928479': status,
+        'ufCrm_5_1758478964965': averageScore
       }
     };
-
-    console.log("Creating deal with payload:", JSON.stringify(dealPayload, null, 2));
-
-    const dealResponse = await fetch(`${BITRIX_WEBHOOK_URL}crm.deal.add`, {
+    const createResponse = await fetch(`${BITRIX_WEBHOOK_URL}crm.item.add`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dealPayload)
+      body: JSON.stringify(createPayload)
     });
-
-    const dealResult = await dealResponse.json();
-    if (dealResult.error || !dealResult.result) {
-      throw new Error(`Failed to create deal: ${dealResult.error_description || 'Unknown error'}`);
+    const createResult = await createResponse.json();
+    if (createResult.error || !createResult.result) {
+      throw new Error(`Failed to create item: ${createResult.error_description || 'Unknown error'}`);
     }
-    
-    const dealId = dealResult.result;
-    console.log(`Deal created successfully with ID: ${dealId}`);
+    const itemId = createResult.result.item.id;
+    console.log(`Item created successfully with ID: ${itemId}. Custom fields will be empty.`);
 
     // 3. Add photos and detailed comments to the timeline
     const { heightMin, heightMax, widthMin, widthMax, lengthMin, lengthMax } = product.referenceDimensions;
     const timelineComment = `
-      <h3>Детальный отчет по проверке</h3>
+      <h3>Детальный отчет по проверке (Партия №${formData.batchNumber})</h3>
       <br>
       <b>Статус проверки:</b> ${status === 'passed' ? '<span style="color: green;">ПРОЙДЕНО</span>' : '<span style="color: red;">БРАК</span>'}
       <br>
@@ -89,40 +84,34 @@ export const submitToBitrix = async (formData: FormData, product: Product, statu
         filesToAttach.push({ filename: `crumb_${formData.batchNumber}.png`, data: crumbPhotoB64 });
     }
 
-    if (filesToAttach.length > 0) {
-        const timelinePayload = {
-            fields: {
-                ENTITY_ID: dealId,
-                ENTITY_TYPE: 'deal',
-                COMMENT: timelineComment,
-                FILES: filesToAttach.map(f => ({
-                    fileData: [f.filename, f.data]
-                }))
-            }
-        };
-
-        console.log("Adding timeline comment with photos...");
-        const timelineResponse = await fetch(`${BITRIX_WEBHOOK_URL}crm.timeline.comment.add`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(timelinePayload)
-        });
-
-        const timelineResult = await timelineResponse.json();
-        if (timelineResult.error) {
-            // Log the error but don't throw, as the deal was already created.
-            console.error(`Failed to add timeline comment: ${timelineResult.error_description}`);
-        } else {
-            console.log("Timeline comment with photos added successfully.");
+    const timelinePayload = {
+        fields: {
+            ENTITY_ID: itemId,
+            ENTITY_TYPE: `TDA_${ENTITY_TYPE_ID}`,
+            COMMENT: timelineComment,
+            FILES: filesToAttach.map(f => ({
+                fileData: [f.filename, f.data]
+            }))
         }
-    }
+    };
 
+    console.log("Adding timeline comment with photos...");
+    const timelineResponse = await fetch(`${BITRIX_WEBHOOK_URL}crm.timeline.comment.add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(timelinePayload)
+    });
+
+    const timelineResult = await timelineResponse.json();
+    if (timelineResult.error) {
+        console.error(`Failed to add timeline comment: ${timelineResult.error_description}`);
+    }
+    
     console.log("Bitrix24 submission process completed successfully!");
     return Promise.resolve();
 
   } catch (error) {
     console.error("An error occurred during Bitrix24 submission:", error);
-    // Re-throw the error to be caught by the calling component
     throw error;
   }
 };
