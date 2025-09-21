@@ -1,0 +1,51 @@
+
+[
+  {
+    "sku": "BOR-001",
+    "name": "Бородинский хлеб",
+    "referenceDimensions": {
+      "heightMin": 88,
+      "heightMax": 92,
+      "widthMin": 118,
+      "widthMax": 122,
+      "lengthMin": 235,
+      "lengthMax": 245
+    },
+    "referencePhotos": {
+      "exterior": "https://picsum.photos/id/1080/800/600",
+      "crumb": "https://picsum.photos/id/292/800/600"
+    }
+  },
+  {
+    "sku": "BAG-001",
+    "name": "Французский багет",
+    "referenceDimensions": {
+      "heightMin": 48,
+      "heightMax": 52,
+      "widthMin": 68,
+      "widthMax": 72,
+      "lengthMin": 540,
+      "lengthMax": 560
+    },
+    "referencePhotos": {
+      "exterior": "https://picsum.photos/id/225/800/600",
+      "crumb": "https://picsum.photos/id/431/800/600"
+    }
+  },
+  {
+    "sku": "CIA-001",
+    "name": "Чиабатта",
+    "referenceDimensions": {
+      "heightMin": 65,
+      "heightMax": 75,
+      "widthMin": 145,
+      "widthMax": 155,
+      "lengthMin": 240,
+      "lengthMax": 260
+    },
+    "referencePhotos": {
+      "exterior": "https://picsum.photos/id/1060/800/600",
+      "crumb": "https://picsum.photos/id/1051/800/600"
+    }
+  }
+]
